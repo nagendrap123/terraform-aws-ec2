@@ -1,0 +1,160 @@
+Module development 
+==================
+Module will works on DRY principle --- Dont repeat yourself
+
+Important points 
+variables
+functions
+
+min code 
+code reuse
+
+
+write resource defintions
+left side options are from documentation,you can't change options right side are values,
+we can give as per project requirement 
+keep variables and their default values 
+override if required
+
+resource defintion
+------------------
+resource "aws_instance" "" {
+}
+
+left side options
+----------------
+ami
+instance_type 
+
+
+So by using module concept we are creating ec2 instance 
+
+first we are giving leftside values in resource
+resource "aws_instance" "db" {
+    ami = 
+    instance_type = 
+    vpc_security_group_ids = 
+	tags = {
+      
+    }
+
+Now we are creating variables for left side values
+
+variable "ami_id" {
+    type = string
+    default = "ami-041e2ea9402c46c32"
+  
+}
+
+variable "security_group_ids" {
+    type = list
+    default = ["sg-0d691bc690171d377"]
+  
+}
+variable "instance_type" {
+    #type = string      #dont mention type for instance_type, we will get an error
+    default = "t3.micro"
+  
+}
+
+variable "tags" {
+    type = map 
+    default = {} #this means empty, its not a mandatory 
+  
+}
+
+so after creation of variables we assigning to the values to the resource
+
+resource "aws_instance" "db" {
+    ami = var.ami_id
+    instance_type = var.instance_type
+    vpc_security_group_ids = var.security_group_ids
+    tags = var.tags
+}
+
+Note: providers.tf still we dint not use in this directory
+we created resource and we defined variables
+
+so we can create one more directory and we will create providers.tf 
+
+code placed in one directory and we have to use the one more directory
+we can called the code by using "module"
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+      version = "5.48.0"
+    }
+  }
+  backend "s3" {
+    bucket = "nag-devops1"
+    key    = "module-ec2"     #we need to change the key value 
+    region = "us-east-1"
+    dynamodb_table = "nag-locking"
+  }
+}
+
+#provide authentication here
+provider "aws" {
+  region = "us-east-1"
+}
+
+	
+  
+}
+
+
+after that we can create file ec2.tf
+
+we have to call the code by using module
+
+module "ec2-test" {
+
+#provide code directory to call the code , we can use the source command 
+
+source = "../terraform-aws-ec2"
+}
+
+so we can run the terraform commands 
+
+$ terraform init
+Initializing modules...
+- ec2-test in ..\terraform-aws-ec2
+
+Initializing the backend...
+
+Successfully configured the backend "s3"! Terraform will automatically
+use this backend unless the backend configuration changes.
+
+Initializing provider plugins...
+- Finding hashicorp/aws versions matching "5.48.0"...
+- Installing hashicorp/aws v5.48.0...
+
+once terraform init completed automatically "module" will be created 
+in that "module.json" automatically created its contains the terraform code details 
+
+so it will call the code and its will create the ec2 instance
+
+if you want override default values 
+
+module "aws-ec2" {
+
+source = "../terraform-aws-ec2"
+instance_type = "t3.small"  #its will override the t3.micro
+tags = {
+Name = "Module-test"
+terraform = "true"
+  }
+}
+
+advantages
+-----------
+code reuse 
+best practices can be implemente and force to use 
+easy to maintain/update
+we can keep few restrictions based on company guidelines
+
+module developers --- they create tf code with best practices
+module users -- they can use the code 
+ 
+
