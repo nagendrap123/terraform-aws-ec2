@@ -157,4 +157,104 @@ we can keep few restrictions based on company guidelines
 module developers --- they create tf code with best practices
 module users -- they can use the code 
  
+module are two types
+===================
+1.custom module development
+2.open source modules
+
+VPC()
+=======
+virtual private cloud 
+suppose we have a project
+they have to buy the servers
+deploy the code in servers
+development ---- only dev servers
+testing --- only qa servers
+production support --- limited access for production servers 
+call center --- only internal applications
+devops --- full access to all servers 
+linux admin -- all server access 
+
+data center
+==========
+space
+watchmen
+network 
+resources
+maintanance 
+logical seperation of servers
+power
+
+VPC
+=====
+VPC is a mini data center for a project.
+resources created inside VPC are isolated and private to ourself
+
+VPC name = village name 
+VPC CIDR = village pincode 
+subnets = streets 
+arch = internet gateway 
+routes = roads 
+
+public and private subnets
+----------------------------
+subnets which are connected to internet gateway are called public subnets
+subnets which are not connected to internet gateway are called private subnets
+
+10.0.0.0/16 ------> first 2 digits are fixed, your are not allowed to change , you can change last 2 octate
+10.0 -----> fixed 
+each octate range -- 0-255 
+
+10.0.1.0/24 -----> first 3 digits are fixed, you can change last octate 
+
+10.0.2.0/24,10.0.3.0/24,10.0.3.0/24,
+
+
+steps
+=======
+first we have to created VPC with CIDR ----10.0.0.0/24
+based on VPC 
+we have to create VPC subnets 
+public subnets ---10.0.1.0/24 
+private subnets ----- 10.0.11.0/24 
+
+next we have to create internet gateway and attach internet gateway to VPC 
+
+create route tables
+public route table and attach VPC
+private route table and attach VPC 
+
+frontend ---- public
+backend ----- private
+db ------ private, we create in db subnet 
+
+what is high availability zone 
+------------------------------
+suppose we have availability zones 1a,1b
+suppose will 1a down ----1b be will available 
+
+if two 1a,1b availability zones are up---the traffic will be moved to 1a,1b 
+
+2 subnets ---> 1a and 1b 
+2 private subnets ----> 1a and 1b 
+2 db subnets --1a and 1b 
+
+VPC
+---
+create VPC
+create IGW 
+attach IGW to VPC 
+create subnet
+create route table 
+create routes 
+attach route table subnet
+
+
+create VPC
+----------
+create the VPC -----with CIDR  ----10.0.0.0./16 
+
+IGW
+----
+create IGW ----with name expense --- and attach VPC to IGW 
 
