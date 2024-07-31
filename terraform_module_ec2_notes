@@ -544,9 +544,177 @@ module "vpc" {
 }
 
 
+we can create the same for private and database subnets 
+
+NAT gateway / elastic IP
+--------------------------
+create elastic IP
+
+resource "aws_eip" "lb" {
+  domain   = "vpc"
+}
 
 
+resource "aws_nat_gateway" "example" {
+  allocation_id = aws_eip.example.id
+  subnet_id     = aws_subnet.example.id
 
+  tags = {
+    Name = "gw NAT"
+  }
+
+  # To ensure proper ordering, it is recommended to add an explicit dependency
+  # on the Internet Gateway for the VPC.
+  depends_on = [aws_internet_gateway.example]
+}
+
+route tables 
+===========
+resource "aws_route_table" "example" {
+  vpc_id = aws_vpc.example.id
+
+  route {
+    cidr_block = "10.0.1.0/24"
+    gateway_id = aws_internet_gateway.example.id
+  }
+
+  route {
+    ipv6_cidr_block        = "::/0"
+    egress_only_gateway_id = aws_egress_only_internet_gateway.example.id
+  }
+
+  tags = {
+    Name = "example"
+  }
+}
+
+
+But we are just route tables so we are using below resource
+
+resource "aws_route_table" "example" {
+  vpc_id = aws_vpc.example.id
+  tags = {
+    Name = "example"
+  }
+}
+
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+  tags = merge(
+  var.common_tags,
+  var.public_route_table_tags,
+  {
+    Name = "${local.resource_name}-public"
+  }
+ )
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+  tags = merge(
+  var.common_tags,
+  var.private_route_table_tags,
+  {
+    Name = "${local.resource_name}-private"
+  }
+ )
+}
+
+## database route table 
+resource "aws_route_table" "database" {
+  vpc_id = aws_vpc.main.id
+  tags = merge(
+  var.common_tags,
+  var.database_route_table_tags,
+  {
+    Name = "${local.resource_name}-database"
+  }
+ )
+}
+
+for the same we have to create same private and database
+
+present we are not assigning subnets to the our route tables 
+
+
+route 
+=======
+so we are creating routes 
+
+resource "aws_route" "r" {
+  route_table_id            = aws_route_table.testing.id
+  destination_cidr_block    = "10.0.1.0/22"
+  vpc_peering_connection_id = "pcx-45ff3dc1"
+}
+
+for public route
+resource "aws_route" "public" {
+  route_table_id            = aws_route_table.public.id
+  destination_cidr_block    = "0.0.0.0/0"
+  gateway_id = aws_internet_gateway.gw.id
+}
+
+resource "aws_route" "private_route_nat" {
+  destination_cidr_block    = "0.0.0.0/0"
+  route_table_id            = aws_route_table.private.id
+  nat_gateway_id = aws_nat_gateway.nat.id
+}
+
+resource "aws_route" "database_route_nat" {
+  destination_cidr_block    = "0.0.0.0/0"
+  route_table_id            = aws_route_table.database.id
+  nat_gateway_id = aws_nat_gateway.nat.id
+}
+
+	
+for private and database servers are connect with public through nat gateway
+
+So now we are associationing subnets to the route table 
+---------------------------------------------------------
+we have 1 public route table 
+and 2 public subnets 
+
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.foo.id
+  route_table_id = aws_route_table.bar.id
+}
+
+resource "aws_route_table_association" "public" {
+  count = length(var.public_subnet_cidrs)
+  subnet_id      = aws_subnet.public[*].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(var.private_subnet_cidrs)
+  subnet_id      = aws_subnet.private[*].id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "database" {
+  count = length(var.database_subnet_cidrs)
+  subnet_id      = aws_subnet.database[*].id
+  route_table_id = aws_route_table.database.id
+}
+
+we will get an error 
+
+Error: Incorrect attribute value type
+│
+│   on ..\terraform-aws-vpc\vpc.tf line 166, in resource "aws_route_table_association" "database":
+│  166:   subnet_id      = aws_subnet.database[*].id
+│     ├────────────────
+│     │ aws_subnet.database is tuple with 2 elements
+│
+│ Inappropriate value for attribute "subnet_id": string required.
+╵
+Releasing state lock. This may take a few moments...
+
+How to select a particular element from a list 
+-------------------------------------------------
+0th -- count.index 
+1st --- count.index 
 
 
 
