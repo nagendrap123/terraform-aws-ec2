@@ -252,9 +252,303 @@ attach route table subnet
 
 create VPC
 ----------
+VPC name --- expense-dev
 create the VPC -----with CIDR  ----10.0.0.0./16 
 
 IGW
 ----
 create IGW ----with name expense --- and attach VPC to IGW 
+
+create a subnet
+================
+subnet name --- expense--public-us-east-1a
+availability zone ---1a
+VPC CIDR ---10.0.0.0/16
+subnet CIDR ---10.0.1.0/24
+
+create one moresubnet for availability zone 1b 
+
+subnet name --- expense--public-us-east-1b
+availability zone ---1b
+VPC CIDR ---10.0.0.0/16
+subnet CIDR ---10.0.2.0/24
+
+create subnet for private 
+
+subnet name --- expense--private-us-east-1a
+availability zone ---1a
+VPC CIDR ---10.0.0.0/16
+subnet CIDR ---10.0.11.0/24
+
+create one moresubnet for availability zone 1b 
+
+subnet name --- expense--private-us-east-1b
+availability zone ---1b
+VPC CIDR ---10.0.0.0/16
+subnet CIDR ---10.0.12.0/24
+
+
+create a subnet for database subnet
+
+subnet name --- expense--database-us-east-1a
+availability zone ---1a
+VPC CIDR ---10.0.0.0/16
+subnet CIDR ---10.0.21.0/24
+
+create one moresubnet for availability zone 1b 
+
+subnet name --- expense--database-us-east-1b
+availability zone ---1b
+VPC CIDR ---10.0.0.0/16
+subnet CIDR ---10.0.22.0/24
+
+create route tables
+===================
+name -- expense-public
+select vpc 
+
+so goto  expense-public route table --we should add 
+edit route table --- add route data ---- 0.0.0.0/0 and give IGW 
+
+create private route table 
+
+create database route table 
+
+next route table associate with subnets
+
+goto "subnet" expense--public-us-east-1a-- and edit the subnet associations and give public route table 
+same scenario for other subnets also 
+
+
+NAT Gateway 
+=============
+private servers can't connect to the internet or cannot accept connections from the internet
+
+yum nginx -y its not works
+
+traffic originating from the servers --- outbound 
+traffic to servers is called inbound 
+
+NAT gateway -- public subnet 
+this is enable outbound internet traffic to the private servers 
+general use cases fetching the updates, downloading packages from the internet
+
+IP keeps on changing, IP should not be changed. we need to static IP.
+Elastic IP == static IP
+
+NAT gateway its should be in public subnet
+
+NAT gateway is only will take care of outbound rules
+##what is NAT gateway or how can enable outbound internet traffic to the private servers 
+
+
+resource names, variable names, output names these names are related to terraform
+
+Name tags are related users 
+
+terraform names can have "_" to seperate words 
+user names can have "-" to seperate words 
+
+
+vpc resource
+==========
+resource "aws_vpc" "main" {
+  cidr_block       = var.vpc_cidr
+  instance_tenancy = "default"
+  enable_dns_hostnames = var.enable_dns_hostnames
+
+  tags = {
+    Name = "main"
+  }
+}
+
+variables
+=========
+variable "vpc_cidr" {
+    type = string
+    default = "10.0.0.0/16"
+  
+}
+variable "enable_dns_hostnames" {
+    type = bool
+    default = "true"
+  
+}
+
+tagging strategy 
+==================
+expense-dev 
+<project name>-<environment>
+common tags 
+----------
+terraform = true
+project name 
+environment
+
+we can also variables.tf in terraform module users [terraform-vpc-test]
+
+IGW
+====
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "main"
+  }
+}
+
+
+
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(
+    var.common_tags,
+    var.igw_tags,
+    {
+      Name = local.resource_name
+
+    }
+  )
+  
+}
+
+create VPC 
+create IGW 
+create subnets (public/private/database)
+we decided every project inside nagdevops.online should have high availability
+so we should force to create 2 public/private/database subnets
+
+expense-public-us-east-1a
+expense-public-us-east-1b
+
+resource "aws_subnet" "main" {
+  vpc_id     = aws_vpc.main.id
+  cidr_block = "10.0.1.0/24"
+
+  tags = {
+    Name = "Main"
+  }
+}
+
+we have to modify on this 
+so we need to subnets so,we have to use count function
+terraform variable conditions/restrictions
+-----------------------------------------
+Here we want exactly two subnets 
+variable "public_subnet_cidrs" {
+    type =list 
+    validation {
+      condition = length(var.public_subnet_cidrs) == 2
+      error_message = "please provide exact 2 CIDRs values"
+    }
+  
+}
+
+variable conditions/restrictions
+----------------------------------
+ validation {
+      condition = length(var.public_subnet_cidrs) == 2
+      error_message = "please provide exact 2 CIDRs values"
+    }
+	
+so we used this variable we created resource
+resource "aws_subnet" "public" {
+  count = length(var.public_subnet_cidrs)
+  vpc_id     = aws_vpc.main.id
+  cidr_block = var.public_subnet_cidrs[count.index]
+
+  tags = {
+    Name = "Main"
+  }
+}
+	
+tags 
+======
+expense-public-us-east-1a
+expense-public-us-east-1b
+
+for availability zones data we have source from provider so, we can use "data source"
+
+How to identify How many availability zones in a region
+---------------------------------------------------------
+data "aws_availability_zones" "available" {
+    state = "available"
+}
+
+
+we have to take outputs 
+
+terraform developers output.tf 
+
+output "azs" {
+    value = data.aws_availability_zones.available
+  
+}
+
+if you want only names 
+output "azs" {
+    value = data.aws_availability_zones.available.names
+  
+}
+
+terraform users output.tf 
+output "azs_info" {
+    value = module.vpc.azs  #<module>.<modue name>.<output>
+  
+}
+
+
+so we got the output
+  + azs_info = [
+      + "us-east-1a",
+      + "us-east-1b",
+      + "us-east-1c",
+      + "us-east-1d",
+      + "us-east-1e",
+      + "us-east-1f",
+    ]
+here we want to take two availability zones only so, we are using slice function
+
+slice(list, start_index, end_index)
+
+list - The list from which you want to extract a subset.
+start_index - The starting index of the subset (inclusive).
+end_index - The ending index of the subset (exclusive).
+
+slice(data.aws_availability_zones.available.names, 0, 2)
+
+error 
+=====
+│ Error: Missing required argument
+│
+│   on vpc.tf line 1, in module "vpc":
+│    1: module "vpc" {
+│
+│ The argument "public_subnet_cidrs" is required, but no definition was
+│ found.
+
+
+so we have to give in terraform users 
+variable "public_subnet_cidrs" {
+    default = ["10.0.1.0/24","10.0.2.0/24"]
+  
+}
+
+
+module "vpc" {
+    source = "../terraform-aws-vpc"
+    project_name = var.project_name
+    common_tags = var.common_tags
+    public_subnet_cidrs = var.public_subnet_cidrs
+}
+
+
+
+
+
+
+
+
+
 
