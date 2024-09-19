@@ -716,7 +716,116 @@ How to select a particular element from a list
 0th -- count.index 
 1st --- count.index 
 
+resource "aws_route_table_association" "public" {
+  count = length(var.public_subnet_cidrs)
+  subnet_id      = element(aws_subnet.public[*].id, count.index)
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private" {
+  count = length(var.private_subnet_cidrs)
+  subnet_id      = element(aws_subnet.private[*].id, count.index)
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "database" {
+  count = length(var.database_subnet_cidrs)
+  subnet_id      = element(aws_subnet.database[*].id,count.index)
+  route_table_id = aws_route_table.database.id
+}
+
+VPC peering 
+===============
+1. CIDR should not be the same 
+2.VPC can be in 
+* either same region of same account 
+* either different region of same account
+* either same region of different accounts
+* either diff region of different accounts
+3.routes should be added to subnets 
+for VPC1 and VPC2 peering mediator is peering connections
+Requester --- expense VPC 
+Acceptor --- Default VPC 
+
+Step1: creating peering connections
+goto VPC peering connections in AWS account 
+click on create VPC peering connections
+
+Name --VPC-expense-default
+
+Requester VPC ID : expense-dev 
+
+Acceptor VPC ID : default 
+
+After creating VPC peering connections 
+it will ask accept request, so we have to accept the request
+
+Step2: goto route tables
+
+first we have to check VPC1-expense-dev CIDR[10.0.0.0/16] and VPC2 default CIDR[172.31.0.0/16]
+
+VPC1 CIDR need to connect VPC2 CIDR through subnets in the route table 
+
+So goto route tables 
+
+select route tables and edit routes click on add routes 
+
+destination CIDR --172.31.0.0/16
+target -- peering connections 
+
+we have to do required route tables to changes 
+
+one VPC1 side CIDR associations is completed 
+
+Step3:
+we have to default VPC2 route tables and goto route and click on add routes 
+
+destination is 10.0.0.0/16 
+target: peering connections
+
+So both Sides connections has been enabled 
+
+Peering is the optional ----> make the peering the is optional-- default is false
+
+if true peering should be created 
 
 
+variable
+--------
+variable "is_peering_required" {
+    type = bool
+    default = false
+  
+}
+
+count = var.is_peering_required ? 1 : 0
+
+its means 
+is_peering_required --- true it will take --1 
+is_peering_required --- false it will take --0
+
+we have to change true or false in the variable
+
+we should get which VPC he wants peering
+
+target_vpc_id --- empty 
+
+in this case lets take default vpc 
+auto accept can work if in the same account 
+acceptor_vpc is empty then auto accept true, otherwise false
+
+ expense vpc public route table 
+ destination ----> default VPC cidr 
+ 
+ if count is set , it is list 
+ 
+ database subnet group
+ =====================
+ we can create group of database subnets that is called as db subnets groups 
+ 
+ output
+ =======
+ output of one resource may become input of another resource
+ 
 
 
